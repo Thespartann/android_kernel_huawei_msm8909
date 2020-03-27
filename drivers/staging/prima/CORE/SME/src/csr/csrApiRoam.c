@@ -270,7 +270,9 @@ void csrRoamJoinRetryTimerHandler(void *pv);
 #endif
 void limInitOperatingClasses( tHalHandle hHal );
 extern void SysProcessMmhMsg(tpAniSirGlobal pMac, tSirMsgQ* pMsg);
+#ifdef WLAN_BTAMP_FEATURE
 extern void btampEstablishLogLinkHdlr(void* pMsg);
+#endif
 static void csrSerDesUnpackDiassocRsp(tANI_U8 *pBuf, tSirSmeDisassocRsp *pRsp);
 void csrReinitPreauthCmd(tpAniSirGlobal pMac, tSmeCmd *pCommand);
 
@@ -9734,7 +9736,7 @@ tANI_BOOLEAN csrRoamIssueWmStatusChange( tpAniSirGlobal pMac, tANI_U32 sessionId
                          pSmeRsp,
                          sizeof( pCommand->u.wmStatusChangeCmd.u.DeauthIndMsg ));
         }
-        if( HAL_STATUS_SUCCESS( csrQueueSmeCommand(pMac, pCommand, eANI_BOOLEAN_TRUE) ) )
+        if( HAL_STATUS_SUCCESS( csrQueueSmeCommand(pMac, pCommand, eANI_BOOLEAN_FALSE) ) )
         {
             fCommandQueued = eANI_BOOLEAN_TRUE;
         }
@@ -10493,11 +10495,14 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                                 if(pNewBss)
                                 {
                                     vos_mem_copy(pIbssLog->bssid, pNewBss->bssId, 6);
-                                    if(pNewBss->ssId.length)
-                                    {
-                                        vos_mem_copy(pIbssLog->ssid, pNewBss->ssId.ssId,
-                                                     pNewBss->ssId.length);
-                                    }
+                                    if(pNewBss->ssId.length >
+                                       VOS_LOG_MAX_SSID_SIZE)
+                                        pNewBss->ssId.length =
+                                                          VOS_LOG_MAX_SSID_SIZE;
+
+                                    vos_mem_copy(pIbssLog->ssid,
+                                                 pNewBss->ssId.ssId,
+                                                 pNewBss->ssId.length);
                                     pIbssLog->operatingChannel = pNewBss->channelNumber;
                                 }
                                 if(HAL_STATUS_SUCCESS(ccmCfgGetInt(pMac, WNI_CFG_BEACON_INTERVAL, &bi)))
@@ -11042,7 +11047,9 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
             
         case eWNI_SME_BTAMP_LOG_LINK_IND:
             smsLog( pMac, LOG1, FL("Establish logical link req from HCI serialized through MC thread"));
+#ifdef WLAN_BTAMP_FEATURE
             btampEstablishLogLinkHdlr( pSirMsg );
+#endif
             break;
         case eWNI_SME_RSSI_IND:
             smsLog( pMac, LOG1, FL("RSSI indication from TL serialized through MC thread"));
